@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Informe de Métricas Web - UAM</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 30px; color: #333; }
+    h1 { color: #003366; margin-bottom: 5px; }
+    p.subtitle { color: #666; margin-top: 0; margin-bottom: 25px; }
+    .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { text-align: center; padding: 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
+    th { background-color: #f8f9fa; color: #555; text-align: center; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; display: inline-block; }
+    .good { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .moderate { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    .poor { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+  </style>
+</head>
+<body>
+
+  <h1>📊 Informe de Rendimiento Web - UAM</h1>
+  <p class="subtitle">Evaluación automatizada mediante Cypress & Lighthouse con Clasificación de Umbrales</p>
+
+  <div class="card">
+    <table id="metricsTable">
+      <thead>
+        <tr>
+          <th>Integrante</th>
+          <th>Página</th>
+          <th>Dispositivo</th>
+          <th>Fecha / Hora</th>
+          <th>FCP (&le; 1,8 s)</th>
+          <th>LCP (&le; 2,5 s)</th>
+          <th>Speed Index (&le; 3,4 s)</th>
+          <th>Performance (90-100)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Carga dinámica desde el JSON -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    // Definición de umbrales según el documento del proyecto
+    const thresholds = {
+      fcp: { good: 1.8, moderate: 3.0 },
+      lcp: { good: 2.5, moderate: 4.0 },
+      speedIndex: { good: 3.4, moderate: 5.8 },
+      performance: { good: 90, moderate: 50 }
+    };
+
+    function getClass(val, type) {
+      const num = parseFloat(val);
+      if (type === 'performance') {
+        if (num >= thresholds.performance.good) return { css: 'good', label: 'Bueno' };
+        if (num >= thresholds.performance.moderate) return { css: 'moderate', label: 'Por mejorar' };
+        return { css: 'poor', label: 'Deficiente' };
+      } else {
+        const limits = thresholds[type];
+        if (num <= limits.good) return { css: 'good', label: 'Bueno' };
+        if (num <= limits.moderate) return { css: 'moderate', label: 'Por mejorar' };
+        return { css: 'poor', label: 'Deficiente' };
+      }
+    }
+
+    fetch('./cypress/fixtures/lighthouse-metrics.json')
+      .then(res => res.json())
+      .then(data => {
+        const tbody = document.querySelector('#metricsTable tbody');
+        tbody.innerHTML = '';
+
+        data.forEach(item => {
+          const row = document.createElement('tr');
+          
+          const fcpRes = getClass(item.firstContentfulPaint, 'fcp');
+          const lcpRes = getClass(item.largestContentfulPaint, 'lcp');
+          const siRes = getClass(item.speedIndex, 'speedIndex');
+          const perfRes = getClass(item.performance, 'performance');
+
+          row.innerHTML = `
+            <td><strong>${item.member || 'N/A'}</strong></td>
+            <td style="text-align: left;"><a href="${item.url}" target="_blank">${item.pageName || item.url}</a></td>
+            <td>${item.screenEmulation}</td>
+            <td>${new Date(item.timestamp).toLocaleString()}</td>
+            <td><span class="badge ${fcpRes.css}">${item.firstContentfulPaint} (${fcpRes.label})</span></td>
+            <td><span class="badge ${lcpRes.css}">${item.largestContentfulPaint} (${lcpRes.label})</span></td>
+            <td><span class="badge ${siRes.css}">${item.speedIndex} (${siRes.label})</span></td>
+            <td><span class="badge ${perfRes.css}">${item.performance} / 100 (${perfRes.label})</span></td>
+          `;
+          tbody.appendChild(row);
+        });
+      })
+      .catch(err => console.error('Error al cargar métricas:', err));
+  </script>
+</body>
+</html>
